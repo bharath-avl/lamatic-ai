@@ -1,0 +1,3 @@
+{"name":"What is the capital of France?","input":{"query":"What is the capital of France?"},"expected":"Paris is the capital of France.","resultField":"response"}
+{"name":"Simple math","input":{"query":"What is 2 + 2?"},"expected":"4","resultField":"response"}
+{"name":"Greeting test","input":{"query":"Say hello in Spanish"},"expected":"Hola","resultField":"response"}

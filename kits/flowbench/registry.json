@@ -1,0 +1,14 @@
+{
+  "$schema": "https://schema.lamatic.ai/agentkit/registry.json",
+  "name": "flowbench",
+  "displayName": "FlowBench",
+  "description": "Automated testing & benchmarking tool for Lamatic flows. Run test suites, measure latency, score output quality via local embeddings, and compare against baselines to catch regressions before shipping.",
+  "type": "kit",
+  "category": "testing",
+  "tags": ["testing", "benchmarking", "regression", "quality", "evaluation"],
+  "author": "",
+  "version": "0.1.0",
+  "entrypoint": "apps/",
+  "flows": [],
+  "readme": "README.md"
+}
