@@ -1,0 +1,31 @@
+{
+  "runId": "run_20260712_134344_532",
+  "flowId": "ea04774a-bc7e-4134-b022-352056971fcf",
+  "timestamp": "2026-07-12T08:13:44.914Z",
+  "cases": [
+    {
+      "id": "capital-of-france",
+      "passed": true,
+      "latencyMs": 3804.49,
+      "similarity": 1,
+      "output": "The capital of France is Paris.",
+      "error": null
+    },
+    {
+      "id": "simple-math",
+      "passed": true,
+      "latencyMs": 2124.14,
+      "similarity": 1,
+      "output": "2 + 2 = 4",
+      "error": null
+    },
+    {
+      "id": "greeting-spanish",
+      "passed": true,
+      "latencyMs": 1461.61,
+      "similarity": 1,
+      "output": "¡Hola! Soy un asistente de IA.",
+      "error": null
+    }
+  ]
+}

@@ -15,14 +15,14 @@
 export interface ExecuteWorkflowApiResult {
   status: string;
   result: Record<string, unknown>;
-  requestId: string;
+  requestId?: string;
 }
 
 /** What `executeFlow` returns — the API result plus client-measured latency. */
 export interface ExecuteFlowResult {
   status: string;
   result: Record<string, unknown>;
-  requestId: string;
+  requestId?: string;
   /** Round-trip latency in milliseconds, measured client-side. */
   latencyMs: number;
 }
@@ -155,7 +155,6 @@ function buildQuery(
     `  executeWorkflow(workflowId: $workflowId, payload: { ${payloadFields.join(", ")} }) {`,
     `    status`,
     `    result`,
-    `    requestId`,
     `  }`,
     `}`,
   ].join("\n");

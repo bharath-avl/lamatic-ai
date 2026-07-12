@@ -16,7 +16,7 @@ import pLimit from "p-limit";
 import {
   executeFlow,
   type ExecuteFlowResult,
-} from "@/lib/lamatic-client";
+} from "../lib/lamatic-client";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -168,7 +168,7 @@ export async function runFlow(
   flowId: string,
   testCases: TestCaseInput[]
 ): Promise<TestCaseRunResult[]> {
-  const limit = pLimit(CONCURRENCY_LIMIT);
+  const limit = pLimit(1);
 
   const promises = testCases.map((testCase) =>
     limit(() => runSingleCase(flowId, testCase))

@@ -1,38 +1,89 @@
-"use server";
+// scoreOutput.ts — Compute output quality score for a single test case
+//
+// Uses local sentence embeddings via @xenova/transformers (ONNX runtime).
+// Fully offline — zero external API calls, zero ongoing cost per test run.
 
-// TODO: scoreOutput — Compute output quality score for a single test case
-//
-// INPUT:
-//   - actual: string — the actual output string from the flow
-//   - expected: string — the reference/expected output string
-//
-// WHAT IT DOES:
-//   1. Generate sentence embeddings for both `actual` and `expected`
-//      - Use a LOCAL embedding model (no external API calls)
-//      - Options: @xenova/transformers (ONNX), or a similar JS-native library
-//      - Model suggestion: all-MiniLM-L6-v2 (small, fast, good for similarity)
-//   2. Compute cosine similarity between the two embedding vectors
-//   3. Return { similarity, pass } where pass = similarity >= threshold
-//
-// SCORING PHILOSOPHY (from feature brief):
-//   - Fully offline — zero ongoing cost per test run
-//   - Cosine similarity against reference string
-//   - Default pass threshold: 0.7 (configurable)
-//   - Score range: 0.0 (completely different) to 1.0 (identical meaning)
-//
-// EDGE CASES:
-//   - Empty actual or expected → similarity = 0.0, pass = false
-//   - Identical strings → should return ~1.0 (not necessarily exact 1.0 due to float math)
-//   - Very short strings (< 3 words) may score unreliably — consider a warning flag
+import { cosineSimilarity } from "../lib/metrics";
 
+// ---------------------------------------------------------------------------
+// Embedding pipeline (lazy singleton)
+// ---------------------------------------------------------------------------
+
+// We dynamically import @xenova/transformers and cache the pipeline so the
+// model is only loaded once even if scoreOutput is called many times.
+
+type FeatureExtractionPipeline = (
+  texts: string[],
+  options?: { pooling: string; normalize: boolean }
+) => Promise<{ tolist: () => number[][] }>;
+
+let pipelineInstance: FeatureExtractionPipeline | null = null;
+
+async function getEmbeddingPipeline(): Promise<FeatureExtractionPipeline> {
+  if (pipelineInstance) return pipelineInstance;
+
+  // Dynamic import — @xenova/transformers is ESM-only
+  const { pipeline } = await import("@xenova/transformers");
+  const pipe = await pipeline(
+    "feature-extraction",
+    "Xenova/all-MiniLM-L6-v2"
+  );
+
+  // Cache it for subsequent calls
+  pipelineInstance = pipe as unknown as FeatureExtractionPipeline;
+  return pipelineInstance;
+}
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+export interface ScoreResult {
+  /** Cosine similarity between actual and expected (0.0 – 1.0). */
+  similarity: number;
+  /** Whether similarity >= threshold. */
+  pass: boolean;
+}
+
+/**
+ * Score an actual output against an expected reference using local
+ * sentence-embedding cosine similarity.
+ *
+ * @param actual    - The actual output string from the flow.
+ * @param expected  - The reference/expected output string.
+ * @param threshold - Minimum similarity to pass (default: 0.7).
+ *
+ * Edge cases:
+ *   - Empty actual or expected → similarity = 0.0, pass = false
+ *   - Identical strings → ~1.0 (not exactly 1.0 due to float math)
+ */
 export async function scoreOutput(
   actual: string,
   expected: string,
   threshold: number = 0.7
-): Promise<{
-  similarity: number;
-  pass: boolean;
-}> {
-  // TODO: Implement local embedding + cosine similarity
-  throw new Error("scoreOutput not implemented yet");
+): Promise<ScoreResult> {
+  // Edge case: empty strings
+  if (!actual.trim() || !expected.trim()) {
+    return { similarity: 0.0, pass: false };
+  }
+
+  const pipe = await getEmbeddingPipeline();
+
+  // Batch both texts in a single call for efficiency
+  const output = await pipe([actual, expected], {
+    pooling: "mean",
+    normalize: true,
+  });
+
+  const embeddings = output.tolist();
+  const similarity = cosineSimilarity(embeddings[0], embeddings[1]);
+
+  // Clamp to [0, 1] for display (embeddings are non-negative after normalization)
+  const clamped = Math.max(0, Math.min(1, similarity));
+  const rounded = Math.round(clamped * 10000) / 10000;
+
+  return {
+    similarity: rounded,
+    pass: rounded >= threshold,
+  };
 }

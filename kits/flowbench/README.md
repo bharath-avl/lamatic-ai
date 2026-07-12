@@ -20,3 +20,7 @@ npm run dev
 ## Status
 
 🚧 Scaffold only — implementation in progress.
+
+## Known Limitations
+
+Similarity scoring measures semantic closeness, not just factual correctness — a correct but more verbose or more terse response than the reference string may score lower than expected. For best results, calibrate expected_contains reference strings to match your flow's typical response style and verbosity, rather than using minimal keyword-only references.

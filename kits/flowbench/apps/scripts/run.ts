@@ -226,6 +226,9 @@ async function main(): Promise<void> {
     console.log(
       `  ${c.id.padEnd(25)} ${status.padEnd(8 + (status.length - 4))} ${latency.padEnd(10)} ${sim.padEnd(12)} ${err}`
     );
+    if (!c.passed && c.output) {
+      console.log(`    → ACTUAL OUTPUT: ${c.output}`);
+    }
   }
 
   // Summary stats
@@ -314,13 +317,15 @@ async function main(): Promise<void> {
   }
 
   // ── 7. Baseline save decision ──
+  // Only BLOCKING regressions (similarity drops + new_failures) prevent updates.
+  // Latency regressions are informational — hosted LLM APIs jitter 2-3×.
   const allPassed = failedCount === 0;
-  const noRegressions = diff.regressions.length === 0;
+  const noBlockingRegressions = diff.blockingRegressions.length === 0;
 
   console.log(`\n  ${BOLD}Baseline${RESET}`);
   console.log(`  ${"─".repeat(40)}`);
 
-  if (allPassed && noRegressions) {
+  if (allPassed && noBlockingRegressions) {
     saveBaseline(flowId, currentRun);
     console.log(
       `  ${colorize("✓", GREEN)} Saved as new baseline: .flowbench/baselines/${flowId}.json`
@@ -328,8 +333,8 @@ async function main(): Promise<void> {
   } else {
     const reasons: string[] = [];
     if (!allPassed) reasons.push(`${failedCount} case(s) failed`);
-    if (!noRegressions)
-      reasons.push(`${diff.regressions.length} regression(s)`);
+    if (!noBlockingRegressions)
+      reasons.push(`${diff.blockingRegressions.length} blocking regression(s)`);
     console.log(
       `  ${colorize("⚠", YELLOW)} Baseline NOT updated — ${reasons.join(", ")}`
     );
@@ -340,8 +345,8 @@ async function main(): Promise<void> {
 
   console.log();
 
-  // Exit with non-zero if there are failures or regressions
-  if (!allPassed || !noRegressions) {
+  // Exit with non-zero if there are failures or blocking regressions
+  if (!allPassed || !noBlockingRegressions) {
     process.exit(1);
   }
 }

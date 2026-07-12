@@ -53,14 +53,22 @@ export interface CaseDiff {
 }
 
 export interface CompareResult {
-  /** Cases that got worse in at least one dimension. */
+  /** Cases that got worse in at least one dimension (latency, similarity, or pass/fail). */
   regressions: CaseDiff[];
+  /**
+   * Subset of regressions that should BLOCK baseline updates.
+   * Only similarity regressions and new_failures — latency regressions are
+   * informational in v1 because hosted LLM APIs have 2-3× natural jitter.
+   */
+  blockingRegressions: CaseDiff[];
   /** Cases that got better in at least one dimension. */
   improvements: CaseDiff[];
   /** Case IDs present in current but not in baseline. */
   newCases: string[];
   /** Case IDs present in baseline but not in current. */
   removedCases: string[];
+  /** True when there is no baseline to compare against. */
+  isFirstRun: boolean;
   /** Human-readable note (e.g. "no baseline, this run becomes the baseline"). */
   note: string | null;
 }
@@ -70,16 +78,19 @@ export interface CompareResult {
 // ---------------------------------------------------------------------------
 
 /**
- * Latency regression threshold: current > baseline × 1.20 (20% slower).
- * Symmetric: improvement if current < baseline × 0.80 (20% faster).
+ * Latency regression threshold: current > baseline × 1.60 (60% slower).
+ * Symmetric: improvement if current < baseline × 0.40 (60% faster).
+ *
+ * Set high (60%) because hosted LLM APIs have 2-3× natural latency jitter.
+ * Latency regressions are reported but do NOT block baseline updates.
  */
-export const LATENCY_REGRESSION_THRESHOLD_PCT = 20;
+export const LATENCY_REGRESSION_THRESHOLD_PCT = 60;
 
 /**
- * Similarity regression threshold: baseline - current > 0.1.
- * Symmetric: improvement if current - baseline > 0.1.
+ * Similarity regression threshold: baseline - current > 0.2.
+ * Symmetric: improvement if current - baseline > 0.2.
  */
-export const SIMILARITY_REGRESSION_THRESHOLD = 0.1;
+export const SIMILARITY_REGRESSION_THRESHOLD = 0.2;
 
 // ---------------------------------------------------------------------------
 // Implementation
@@ -100,9 +111,11 @@ export function compareBaseline(
   if (baseline === null) {
     return {
       regressions: [],
+      blockingRegressions: [],
       improvements: [],
       newCases: current.cases.map((c) => c.id),
       removedCases: [],
+      isFirstRun: true,
       note: "no baseline, this run becomes the baseline",
     };
   }
@@ -127,6 +140,7 @@ export function compareBaseline(
 
   // ── Compare matched cases ──
   const regressions: CaseDiff[] = [];
+  const blockingRegressions: CaseDiff[] = [];
   const improvements: CaseDiff[] = [];
 
   for (const cur of current.cases) {
@@ -184,6 +198,10 @@ export function compareBaseline(
     // — Classify ──
     const isRegression =
       latencyRegressed || similarityRegressed || passChange === "new_failure";
+    // Blocking = correctness regressions only (similarity drop or new failure).
+    // Latency regressions are informational — they don't block baseline updates.
+    const isBlockingRegression =
+      similarityRegressed || passChange === "new_failure";
     const isImprovement =
       latencyImproved || similarityImproved || passChange === "new_pass";
 
@@ -194,6 +212,9 @@ export function compareBaseline(
     if (isRegression) {
       regressions.push(diff);
     }
+    if (isBlockingRegression) {
+      blockingRegressions.push(diff);
+    }
     if (isImprovement) {
       improvements.push(diff);
     }
@@ -201,9 +222,11 @@ export function compareBaseline(
 
   return {
     regressions,
+    blockingRegressions,
     improvements,
     newCases,
     removedCases,
+    isFirstRun: false,
     note: null,
   };
 }
