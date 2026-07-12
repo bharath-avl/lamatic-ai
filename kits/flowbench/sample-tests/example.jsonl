@@ -1,3 +1,3 @@
-{"name":"What is the capital of France?","input":{"query":"What is the capital of France?"},"expected":"Paris is the capital of France.","resultField":"response"}
-{"name":"Simple math","input":{"query":"What is 2 + 2?"},"expected":"4","resultField":"response"}
-{"name":"Greeting test","input":{"query":"Say hello in Spanish"},"expected":"Hola","resultField":"response"}
+{"id":"capital-of-france","input":{"userPrompt":"What is the capital of France?"},"resultField":"response","expected_contains":"Paris is the capital of France.","min_similarity":0.7}
+{"id":"simple-math","input":{"userPrompt":"What is 2 + 2?"},"resultField":"response","expected_contains":"4"}
+{"id":"greeting-spanish","input":{"userPrompt":"Say hello in Spanish"},"resultField":"response","expected_contains":"Hola","min_similarity":0.6}

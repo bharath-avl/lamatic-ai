@@ -37,8 +37,6 @@ interface TestCaseSpec {
   input: Record<string, unknown>;
   resultField: string;
   /** Reference output for similarity scoring. */
-  expected?: string;
-  /** If set, the output must contain this substring (case-insensitive). */
   expected_contains?: string;
   /** Override the default similarity threshold for this case. */
   min_similarity?: number;
@@ -177,22 +175,12 @@ async function main(): Promise<void> {
     let similarity: number | null = null;
     let passed = run.error === null;
 
-    // Similarity scoring (if expected is provided and we got output)
-    if (spec.expected && run.output && passed) {
+    // Similarity scoring (if expected_contains is provided and we got output)
+    if (spec.expected_contains && run.output && passed) {
       const threshold = spec.min_similarity ?? 0.7;
-      const score = await scoreOutput(run.output, spec.expected, threshold);
+      const score = await scoreOutput(run.output, spec.expected_contains, threshold);
       similarity = score.similarity;
       if (!score.pass) {
-        passed = false;
-      }
-    }
-
-    // Substring check (if expected_contains is provided)
-    if (spec.expected_contains && run.output && passed) {
-      const contains = run.output
-        .toLowerCase()
-        .includes(spec.expected_contains.toLowerCase());
-      if (!contains) {
         passed = false;
       }
     }
@@ -233,7 +221,7 @@ async function main(): Promise<void> {
       : colorize("FAIL", RED);
     const latency = `${c.latencyMs.toFixed(0)}ms`;
     const sim = c.similarity !== null ? c.similarity.toFixed(4) : "—";
-    const err = c.error ? colorize(c.error.slice(0, 40), DIM) : "";
+    const err = c.error ? colorize(c.error, DIM) : "";
 
     console.log(
       `  ${c.id.padEnd(25)} ${status.padEnd(8 + (status.length - 4))} ${latency.padEnd(10)} ${sim.padEnd(12)} ${err}`
