@@ -6,7 +6,7 @@
   "type": "kit",
   "category": "testing",
   "tags": ["testing", "benchmarking", "regression", "quality", "evaluation"],
-  "author": "",
+  "author": "bharath-avl",
   "version": "0.1.0",
   "entrypoint": "apps/",
   "flows": [],

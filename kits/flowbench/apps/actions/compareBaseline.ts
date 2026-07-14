@@ -1,7 +1,8 @@
 // compareBaseline.ts — Diff a current benchmark run against a saved baseline
-//
 // Pure function: no I/O, no server action directive, no file reads.
 // The caller is responsible for loading/saving baselines from disk.
+
+import { isLatencyRegression, isSimilarityRegression } from "../lib/metrics";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -78,17 +79,14 @@ export interface CompareResult {
 // ---------------------------------------------------------------------------
 
 /**
- * Latency regression threshold: current > baseline × 1.60 (60% slower).
- * Symmetric: improvement if current < baseline × 0.40 (60% faster).
- *
- * Set high (60%) because hosted LLM APIs have 2-3× natural latency jitter.
+ * Latency regression threshold: 60% slower.
+ * Set high because hosted LLM APIs have 2-3× natural latency jitter.
  * Latency regressions are reported but do NOT block baseline updates.
  */
 export const LATENCY_REGRESSION_THRESHOLD_PCT = 60;
 
 /**
- * Similarity regression threshold: baseline - current > 0.2.
- * Symmetric: improvement if current - baseline > 0.2.
+ * Similarity regression threshold: drop > 0.2.
  */
 export const SIMILARITY_REGRESSION_THRESHOLD = 0.2;
 
@@ -153,8 +151,11 @@ export function compareBaseline(
         ? 0
         : ((cur.latencyMs - base.latencyMs) / base.latencyMs) * 100;
 
-    const latencyRegressed =
-      cur.latencyMs > base.latencyMs * (1 + LATENCY_REGRESSION_THRESHOLD_PCT / 100);
+    const latencyRegressed = isLatencyRegression(
+      cur.latencyMs,
+      base.latencyMs,
+      1 + LATENCY_REGRESSION_THRESHOLD_PCT / 100
+    );
     const latencyImproved =
       cur.latencyMs < base.latencyMs * (1 - LATENCY_REGRESSION_THRESHOLD_PCT / 100);
 
@@ -173,8 +174,11 @@ export function compareBaseline(
 
     if (base.similarity !== null && cur.similarity !== null) {
       const delta = cur.similarity - base.similarity;
-      similarityRegressed =
-        base.similarity - cur.similarity > SIMILARITY_REGRESSION_THRESHOLD;
+      similarityRegressed = isSimilarityRegression(
+        cur.similarity,
+        base.similarity,
+        SIMILARITY_REGRESSION_THRESHOLD
+      );
       similarityImproved =
         cur.similarity - base.similarity > SIMILARITY_REGRESSION_THRESHOLD;
 

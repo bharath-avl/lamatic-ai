@@ -5,6 +5,18 @@ import { type RunResult } from "./compareBaseline";
 const BASELINES_DIR = path.resolve(process.cwd(), "../.flowbench/baselines");
 const RUNS_DIR = path.resolve(process.cwd(), "../.flowbench/runs");
 
+// ---------------------------------------------------------------------------
+// Path-traversal guard
+// ---------------------------------------------------------------------------
+
+const SAFE_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
+
+function assertSafeId(id: string, label: string): void {
+  if (!SAFE_ID_PATTERN.test(id)) throw new Error(`Invalid ${label}: "${id}"`);
+}
+
+// ---------------------------------------------------------------------------
+
 function ensureDir(dir: string) {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
@@ -15,13 +27,23 @@ function ensureDir(dir: string) {
  * Gets the path to the baseline file for a given flow.
  */
 export function getBaselinePath(flowId: string): string {
+  assertSafeId(flowId, "flowId");
   return path.join(BASELINES_DIR, `${flowId}.json`);
+}
+
+/**
+ * Gets the path to a specific run file.
+ */
+export function getRunPath(runId: string): string {
+  assertSafeId(runId, "runId");
+  return path.join(RUNS_DIR, `${runId}.json`);
 }
 
 /**
  * Loads the baseline for a flow, or null if it doesn't exist.
  */
 export function loadBaseline(flowId: string): RunResult | null {
+  assertSafeId(flowId, "flowId");
   const p = getBaselinePath(flowId);
   if (!fs.existsSync(p)) return null;
   try {
@@ -37,6 +59,7 @@ export function loadBaseline(flowId: string): RunResult | null {
  * Saves a run as the new baseline for a flow.
  */
 export function saveBaseline(flowId: string, run: RunResult): void {
+  assertSafeId(flowId, "flowId");
   ensureDir(BASELINES_DIR);
   const p = getBaselinePath(flowId);
   fs.writeFileSync(p, JSON.stringify(run, null, 2), "utf-8");
@@ -46,8 +69,9 @@ export function saveBaseline(flowId: string, run: RunResult): void {
  * Saves a historical run.
  */
 export function saveRun(run: RunResult): void {
+  assertSafeId(run.runId, "runId");
   ensureDir(RUNS_DIR);
-  const p = path.join(RUNS_DIR, `${run.runId}.json`);
+  const p = getRunPath(run.runId);
   fs.writeFileSync(p, JSON.stringify(run, null, 2), "utf-8");
 }
 
@@ -55,7 +79,8 @@ export function saveRun(run: RunResult): void {
  * Loads a specific historical run.
  */
 export function loadRun(runId: string): RunResult | null {
-  const p = path.join(RUNS_DIR, `${runId}.json`);
+  assertSafeId(runId, "runId");
+  const p = getRunPath(runId);
   if (!fs.existsSync(p)) return null;
   try {
     const raw = fs.readFileSync(p, "utf-8");

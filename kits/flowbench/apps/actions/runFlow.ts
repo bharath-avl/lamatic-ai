@@ -30,6 +30,10 @@ export interface TestCaseInput {
   input: Record<string, unknown>;
   /** The key within `result` to extract as the scored output. */
   resultField: string;
+  /** Optional expected output substring for similarity scoring. */
+  expected_contains?: string;
+  /** Minimum cosine similarity to pass (default: 0.7). */
+  min_similarity?: number;
 }
 
 /** The result of running a single test case. */
@@ -130,7 +134,19 @@ async function runSingleCase(
   }
 
   const rawOutput = flowResult.result[testCase.resultField];
-  const output = coerceToString(rawOutput);
+
+  let output: string | null;
+  try {
+    output = coerceToString(rawOutput);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return {
+      id: testCase.id,
+      output: null,
+      latencyMs: flowResult.latencyMs,
+      error: `Failed to serialize resultField "${testCase.resultField}": ${message}`,
+    };
+  }
 
   if (output === null) {
     return {

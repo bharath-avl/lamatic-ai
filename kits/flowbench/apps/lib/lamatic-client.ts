@@ -134,6 +134,8 @@ function inferGraphQLType(value: unknown): string {
  *     }
  *   }
  */
+const GRAPHQL_IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
 function buildQuery(
   flowId: string,
   payload: Record<string, unknown>
@@ -144,6 +146,11 @@ function buildQuery(
   const variables: Record<string, unknown> = { workflowId: flowId };
 
   for (const [key, value] of Object.entries(payload)) {
+    if (!GRAPHQL_IDENTIFIER.test(key)) {
+      throw new Error(
+        `Invalid payload field name "${key}": must be a valid GraphQL identifier`
+      );
+    }
     const gqlType = inferGraphQLType(value);
     varDefs.push(`$${key}: ${gqlType}`);
     payloadFields.push(`${key}: $${key}`);
